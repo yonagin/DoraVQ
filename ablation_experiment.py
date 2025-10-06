@@ -50,6 +50,7 @@ def train_model(model, model_name, training_loader, validation_loader, x_train_v
         'loss_vals': [],
         'embedding_losses': [],
         'validation_recon_errors': [],
+        'perplexities': [],
         'g_losses': [] if model_name == 'DoraVQ' else None
     }
     
