@@ -68,15 +68,14 @@ def train_model(model, model_name, training_loader, validation_loader, x_train_v
             discriminator_optimizer.zero_grad()
             
             # 前向传播
-            with torch.no_grad():
-                _, _, _, _, h_fake = model(x, return_soft_assignment=True)
+            _, _, _, _, _, h_fake = model.get_h(x)
             
             # 从Dirichlet先验采样
             h_real = model.sample_dirichlet_prior(batch_size)
             
             # 判别器损失
             d_real = model.discriminator(h_real)
-            d_fake = model.discriminator(h_fake)
+            d_fake = model.discriminator(h_fake.detach())
             d_loss = -torch.mean(torch.log(torch.sigmoid(d_real) + 1e-8) + 
                                 torch.log(1 - torch.sigmoid(d_fake) + 1e-8))
             d_loss.backward()
@@ -91,7 +90,7 @@ def train_model(model, model_name, training_loader, validation_loader, x_train_v
             optimizer.zero_grad()
             
             # 前向传播
-            x_recon, vq_loss, perplexity, _, h_fake = model(x, return_soft_assignment=True)
+            x_recon, vq_loss, perplexity, _, _, h_fake = model(x)
             
             # 重建损失
             recon_loss = F.mse_loss(x_recon, x)

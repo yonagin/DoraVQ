@@ -38,15 +38,23 @@ class DoraVQ(nn.Module):
         self.dirichlet_alpha = dirichlet_alpha
         self.num_embeddings = num_embeddings
         
-    def compute_soft_assignment(self, distances):
+    def get_h(self, x):
         """
         从距离计算软分配概率h (未平均)
         distances: (B*H*W, K)
         返回: (B*H*W, K) - 每个编码向量的软分配概率
         """
+        z_e = self.encoder(x)
+        z_e = self.pre_quantization_conv(z_e)
+        B = z_e.shape[0]
+        z_q, loss, perplexity, encoding_indices, distances = self.vq(z_e)
         # 转换为概率 (B*H*W, K)
-        h = F.softmax(-distances / self.temperature, dim=-1)
-        return h
+        h_flat = F.softmax(-distances / self.temperature, dim=-1)
+         # 动态地reshape和求平均
+        h_reshaped = h_flat.view(B, -1, self.num_embeddings)    # (B, H*W, K)
+        h = h_reshaped.mean(dim=1)      # (B, K)
+
+        return z_q, loss, perplexity, encoding_indices, distances, h
     
     def sample_dirichlet_prior(self, batch_size):
         """从Dirichlet(alpha, ..., alpha)采样"""
@@ -55,31 +63,15 @@ class DoraVQ(nn.Module):
         samples = dist.sample((batch_size,))
         return samples.to(next(self.parameters()).device)
         
-    def forward(self, x, return_soft_assignment=False):
-        z_e = self.encoder(x)
-        z_e = self.pre_quantization_conv(z_e)
-        # 动态获取形状，消除硬编码
-        B, D, H, W = z_e.shape
-        
-        z_q, loss, perplexity, encoding_indices, distances = self.vq(z_e)
-        x_recon = self.decoder(z_q)
-        
-        if return_soft_assignment:
-            # 计算软分配h（用于对抗训练）
-            h_flat = self.compute_soft_assignment(distances) # (B*H*W, K)
-            
-            # 动态地reshape和求平均
-            h_reshaped = h_flat.view(B, H * W, -1)      # (B, H*W, K)
-            h = h_reshaped.mean(dim=1)      # (B, K)
-            
-            return x_recon, loss, perplexity, encoding_indices, h
-        
-        return x_recon, loss, perplexity, encoding_indices, distances
+    def forward(self, x):
+        z_q, loss, perplexity, encoding_indices, distances, h = self.get_h(x)
+        x_recon = self.decoder(z_q) 
+        return x_recon, loss, perplexity, encoding_indices, distances, h
     
     def reconstruct(self, x):
         """
         重构输入图像
         """
         with torch.no_grad():
-            x_recon, _, _, _, _ = self.forward(x)
+            x_recon, _, _, _, _, _ = self.forward(x)
             return x_recon
