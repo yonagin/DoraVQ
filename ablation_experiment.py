@@ -30,15 +30,15 @@ def train_model(model, model_name, training_loader, validation_loader, x_train_v
             {'params': model.encoder.parameters()},
             {'params': model.decoder.parameters()},
             {'params': model.vq.parameters()}
-        ], lr=args.learning_rate, amsgrad=True)
+        ], lr=args.learning_rate)
         
         # 判别器优化器
         discriminator_optimizer = optim.Adam(model.discriminator.parameters(), 
-                                            lr=args.learning_rate, amsgrad=True)
+                                            lr=args.learning_rate)
         lambda_adv = getattr(args, 'lambda_adv', 1e-3)  # 对抗损失权重
         dirichlet_alpha = getattr(args, 'dirichlet_alpha', 0.1)  # Dirichlet参数
     else:
-        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, amsgrad=True)
+        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
         discriminator_optimizer = None
     
     model.train()
