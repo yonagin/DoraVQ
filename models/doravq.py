@@ -83,15 +83,8 @@ class DoraVQ(nn.Module):
         dist = torch.distributions.Dirichlet(alpha)
         samples = dist.sample((batch_size,))
         
-        # 如果使用top-K过滤，需要将采样结果扩展到完整的维度
-        if self.top_k is not None and self.top_k < self.num_embeddings:
-            full_samples = torch.zeros(batch_size, self.num_embeddings, 
-                                     device=next(self.parameters()).device)
-            # 随机选择top-K个位置放置采样结果
-            # 这里我们选择前top-K个位置，与get_h方法中的处理保持一致
-            full_samples[:, :self.top_k] = samples
-            samples = full_samples
-            
+        # 如果使用top-K过滤，直接返回top-K维度的采样结果
+        # 不需要扩展到完整维度，因为判别器期望的输入维度是top_k
         return samples.to(next(self.parameters()).device)
         
     def forward(self, x):
