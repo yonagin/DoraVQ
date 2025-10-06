@@ -43,13 +43,20 @@ def extract_latent_codes(model, data_loader, device):
                 # 1. 正常获取你的注意力权重
                 z_q, loss, perplexity, encoding_indices, distances = model.vq(z)
 
-                # 2. 使用编码索引
-                indices = encoding_indices.squeeze(1)
+                # 2. 使用编码索引 - 注意：encoding_indices的形状是(B*H*W,)，需要reshape
+                # 首先获取batch size和空间维度
+                batch_size = x.shape[0]
+                latent_shape = z.shape[2:]
+                
+                # 将一维的indices reshape为(batch_size, H, W)
+                indices = encoding_indices.view(batch_size, *latent_shape)
 
             
-            # Reshape indices to match latent spatial dimensions
-            latent_shape = z.shape[2:]
-            indices = indices.view(x.shape[0], *latent_shape)
+            # Reshape indices to match latent spatial dimensions (对于VQVAE需要这个操作)
+            if hasattr(model, 'vector_quantization'):
+                # For VQVAE: indices已经通过squeeze(1)处理过，需要reshape
+                latent_shape = z.shape[2:]
+                indices = indices.view(x.shape[0], *latent_shape)
             
             all_codes.append(indices.cpu())
             all_labels.append(labels)
