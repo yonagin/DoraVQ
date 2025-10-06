@@ -350,6 +350,7 @@ def main():
     parser.add_argument("--n_layers", type=int, default=15)
     parser.add_argument("--temperature", type=float, default=1.0, help="Temperature parameter for DoraVQ")
     parser.add_argument("--max_batches", type=int, default=None, help="Maximum number of batches to process (for memory optimization)")
+    parser.add_argument("--top_k", type=int, default=None, help="Top-K filtering parameter for DoraVQ (number of largest probabilities to keep)")
     
     # VQVAE model paths
     parser.add_argument("--vqvae_model_path", type=str, default=None)
@@ -391,7 +392,8 @@ def main():
         # Load DoraVQ
         doravq = DoraVQ(
             num_embeddings=args.n_embeddings, embedding_dim=64, commitment_cost=0.25,
-            temperature=args.temperature, dirichlet_alpha=0.1, h_dim=128, n_res_layers=2, res_h_dim=32
+            temperature=args.temperature, dirichlet_alpha=0.1, h_dim=128, n_res_layers=2, res_h_dim=32,
+            top_k=args.top_k
         ).to(device)
         doravq.load_state_dict(torch.load(args.doravq_model_path, map_location=device))
         vqvae_models['DoraVQ'] = doravq
@@ -402,7 +404,8 @@ def main():
         vqvae_models['VQVAE'] = VQVAE(128, 32, 2, args.n_embeddings, 64, 0.25).to(device)
         vqvae_models['DoraVQ'] = DoraVQ(
             num_embeddings=args.n_embeddings, embedding_dim=64, commitment_cost=0.25,
-            temperature=args.temperature, dirichlet_alpha=0.1, h_dim=128, n_res_layers=2, res_h_dim=32
+            temperature=args.temperature, dirichlet_alpha=0.1, h_dim=128, n_res_layers=2, res_h_dim=32,
+            top_k=args.top_k
         ).to(device)
         print("Using default VQVAE models")
     

@@ -49,7 +49,8 @@ def test_models():
         dirichlet_alpha=0.1,
         h_dim=h_dim,
         n_res_layers=n_res_layers,
-        res_h_dim=res_h_dim
+        res_h_dim=res_h_dim,
+        top_k=None  # Test without top-K filtering by default
     ).to(device)
     
     # Test forward pass without soft assignment

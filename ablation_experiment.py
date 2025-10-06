@@ -498,6 +498,7 @@ def main():
     # DoraVQ specific parameters
     parser.add_argument("--lambda_adv", type=float, default=1e-4, help="Adversarial loss weight for DoraVQ")
     parser.add_argument("--dirichlet_alpha", type=float, default=0.1, help="Dirichlet alpha parameter for DoraVQ")
+    parser.add_argument("--top_k", type=int, default=None, help="Top-K filtering parameter for DoraVQ (number of largest probabilities to keep)")
     
     # Model selection parameters
     parser.add_argument("--train_vqvae", action="store_true", default=False, help="Train VQVAE model")
@@ -543,7 +544,8 @@ def main():
             dirichlet_alpha=args.dirichlet_alpha,
             h_dim=args.n_hiddens,
             n_res_layers=args.n_residual_layers,
-            res_h_dim=args.n_residual_hiddens
+            res_h_dim=args.n_residual_hiddens,
+            top_k=args.top_k
         ).to(device)
     
     # Check if at least one model is selected
