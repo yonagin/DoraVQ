@@ -110,20 +110,14 @@ def train_model(model, model_name, training_loader, validation_loader, x_train_v
             results["loss_vals"].append(total_loss.cpu().detach().numpy())
             results["embedding_losses"].append(vq_loss.cpu().detach().numpy())
             results["g_losses"].append(g_loss.cpu().detach().numpy())
+            results["perplexities"].append(perplexity.cpu().detach().numpy())
             
         else:
             # 标准VQVAE训练
             optimizer.zero_grad()
             
             # Use the appropriate loss computation method based on model type
-            if hasattr(model, 'return_loss'):
-                total_loss, recon_loss, embedding_loss, _, _ = model(x, return_loss=True)
-            else:
-                # 对于标准VQVAE接口
-                x_recon, vq_loss, perplexity, _ = model(x)
-                recon_loss = F.mse_loss(x_recon, x)
-                total_loss = recon_loss + vq_loss
-                embedding_loss = vq_loss
+            total_loss, recon_loss, embedding_loss, perplexity, _ = model(x, return_loss=True)
             
             total_loss.backward()
             optimizer.step()
@@ -131,6 +125,7 @@ def train_model(model, model_name, training_loader, validation_loader, x_train_v
             results["recon_errors"].append(recon_loss.cpu().detach().numpy())
             results["loss_vals"].append(total_loss.cpu().detach().numpy())
             results["embedding_losses"].append(embedding_loss.cpu().detach().numpy())
+            results["perplexities"].append(perplexity.cpu().detach().numpy())
         
         results["n_updates"] = i
         
@@ -155,11 +150,13 @@ def train_model(model, model_name, training_loader, validation_loader, x_train_v
                 print(f'{model_name} - Update #{i}, '
                       f'Recon Error: {np.mean(results["recon_errors"][-args.log_interval:]):.4f}, '
                       f'Loss: {np.mean(results["loss_vals"][-args.log_interval:]):.4f}, '
-                      f'Adv Loss: {np.mean(results["g_losses"][-args.log_interval:]):.4f}')
+                      f'Perplexity: {np.mean(results["perplexities"][-args.log_interval:]):.4f}, '
+                      f'Generate Loss: {np.mean(results["g_losses"][-args.log_interval:]):.4f}')
             else:
                 print(f'{model_name} - Update #{i}, '
                       f'Recon Error: {np.mean(results["recon_errors"][-args.log_interval:]):.4f}, '
-                      f'Loss: {np.mean(results["loss_vals"][-args.log_interval:]):.4f}')
+                      f'Loss: {np.mean(results["loss_vals"][-args.log_interval:]):.4f}, '
+                      f'Perplexity: {np.mean(results["perplexities"][-args.log_interval:]):.4f}')
     
     return results
 
