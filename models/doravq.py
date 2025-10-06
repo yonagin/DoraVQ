@@ -13,11 +13,10 @@ class Discriminator(nn.Module):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(num_embeddings, 256),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Linear(256, 128),
-            nn.ReLU(),
+            nn.LeakyReLU(),
             nn.Linear(128, 1),
-            nn.Sigmoid()
         )
         
     def forward(self, h):

@@ -80,8 +80,8 @@ def train_model(model, model_name, training_loader, validation_loader, x_train_v
             # 判别器损失
             d_real = model.discriminator(h_prior)
             d_fake = model.discriminator(h_gen)
-            d_loss = -torch.mean(torch.log(d_real + 1e-8) + 
-                                torch.log(1 - d_fake + 1e-8))
+            d_loss = -torch.mean(torch.log(torch.sigmoid(d_real) + 1e-8) + 
+                                torch.log(1 - torch.sigmoid(d_fake) + 1e-8))
             d_loss.backward()
             discriminator_optimizer.step()
             
@@ -99,7 +99,7 @@ def train_model(model, model_name, training_loader, validation_loader, x_train_v
             # 重建损失
             recon_loss = F.mse_loss(x_recon, x)
             d_fake = model.discriminator(h_gen)
-            g_loss = -torch.mean(torch.log(d_fake + 1e-8))
+            g_loss = -torch.mean(torch.log(torch.sigmoid(d_fake) + 1e-8))
             
             total_loss = recon_loss + vq_loss + lambda_adv * g_loss
             
