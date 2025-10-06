@@ -30,15 +30,15 @@ def train_model(model, model_name, training_loader, validation_loader, x_train_v
             {'params': model.encoder.parameters()},
             {'params': model.decoder.parameters()},
             {'params': model.vq.parameters()}
-        ], lr=args.learning_rate, amsgrad=True)
+        ], lr=args.learning_rate)
         
         # 判别器优化器
         discriminator_optimizer = optim.Adam(model.discriminator.parameters(), 
-                                            lr=args.learning_rate, amsgrad=True)
+                                            lr=args.learning_rate)
         lambda_adv = getattr(args, 'lambda_adv', 1e-3)  # 对抗损失权重
         dirichlet_alpha = getattr(args, 'dirichlet_alpha', 0.1)  # Dirichlet参数
     else:
-        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, amsgrad=True)
+        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
         discriminator_optimizer = None
     
     model.train()
@@ -71,15 +71,14 @@ def train_model(model, model_name, training_loader, validation_loader, x_train_v
             
             # 前向传播
             with torch.no_grad():
-                _, _, _, _, h_gen = model(x, return_soft_assignment=True)
+                _, _, _, _, h_fake = model(x, return_soft_assignment=True)
             
             # 从Dirichlet先验采样
-            alpha = torch.full((batch_size, model.num_embeddings), dirichlet_alpha).to(device)
-            h_prior = torch.distributions.Dirichlet(alpha).sample()
+            h_real = model.sample_dirichlet_prior(batch_size)
             
             # 判别器损失
-            d_real = model.discriminator(h_prior)
-            d_fake = model.discriminator(h_gen)
+            d_real = model.discriminator(h_real)
+            d_fake = model.discriminator(h_fake)
             d_loss = -torch.mean(torch.log(torch.sigmoid(d_real) + 1e-8) + 
                                 torch.log(1 - torch.sigmoid(d_fake) + 1e-8))
             d_loss.backward()
@@ -94,11 +93,11 @@ def train_model(model, model_name, training_loader, validation_loader, x_train_v
             optimizer.zero_grad()
             
             # 前向传播
-            x_recon, vq_loss, perplexity, _, h_gen = model(x, return_soft_assignment=True)
+            x_recon, vq_loss, perplexity, _, h_fake = model(x, return_soft_assignment=True)
             
             # 重建损失
             recon_loss = F.mse_loss(x_recon, x)
-            d_fake = model.discriminator(h_gen)
+            d_fake = model.discriminator(h_fake)
             g_loss = -torch.mean(torch.log(torch.sigmoid(d_fake) + 1e-8))
             
             total_loss = recon_loss + vq_loss + lambda_adv * g_loss
