@@ -72,6 +72,8 @@ def extract_latent_codes(model, data_loader, device):
                 
                 indices = indices.view(batch_size, h, w)
             
+            # 确保indices是整数类型（LongTensor），因为它们是索引
+            indices = indices.long()
             all_codes.append(indices.cpu())
             all_labels.append(labels)
     
