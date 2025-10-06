@@ -46,17 +46,31 @@ def extract_latent_codes(model, data_loader, device):
                 # 2. 使用编码索引 - 注意：encoding_indices的形状是(B*H*W,)，需要reshape
                 # 首先获取batch size和空间维度
                 batch_size = x.shape[0]
-                latent_shape = z.shape[2:]
+                
+                # 计算实际的潜在空间维度
+                # encoding_indices的总元素数是B*H*W，所以H*W = total_elements / batch_size
+                total_elements = encoding_indices.numel()
+                hw_size = total_elements // batch_size
+                
+                # 假设潜在空间是正方形，计算H和W
+                h = int(hw_size ** 0.5)
+                w = h  # 假设正方形
                 
                 # 将一维的indices reshape为(batch_size, H, W)
-                indices = encoding_indices.view(batch_size, *latent_shape)
+                indices = encoding_indices.view(batch_size, h, w)
 
             
             # Reshape indices to match latent spatial dimensions (对于VQVAE需要这个操作)
             if hasattr(model, 'vector_quantization'):
                 # For VQVAE: indices已经通过squeeze(1)处理过，需要reshape
-                latent_shape = z.shape[2:]
-                indices = indices.view(x.shape[0], *latent_shape)
+                # 同样需要计算正确的潜在空间维度
+                batch_size = x.shape[0]
+                total_elements = indices.numel()
+                hw_size = total_elements // batch_size
+                h = int(hw_size ** 0.5)
+                w = h  # 假设正方形
+                
+                indices = indices.view(batch_size, h, w)
             
             all_codes.append(indices.cpu())
             all_labels.append(labels)
