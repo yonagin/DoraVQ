@@ -30,15 +30,13 @@ def train_model(model, model_name, training_loader, validation_loader, x_train_v
             {'params': model.encoder.parameters()},
             {'params': model.decoder.parameters()},
             {'params': model.vq.parameters()}
-        ], lr=args.learning_rate)
+        ], lr=args.learning_rate, amsgrad=True)
         
         # 判别器优化器
         discriminator_optimizer = optim.Adam(model.discriminator.parameters(), 
-                                            lr=args.learning_rate)
-        lambda_adv = getattr(args, 'lambda_adv', 1e-3)  # 对抗损失权重
-        dirichlet_alpha = getattr(args, 'dirichlet_alpha', 0.1)  # Dirichlet参数
+                                            lr=args.learning_rate, amsgrad=True)
     else:
-        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, amsgrad=True)
         discriminator_optimizer = None
     
     model.train()
@@ -100,7 +98,7 @@ def train_model(model, model_name, training_loader, validation_loader, x_train_v
             d_fake = model.discriminator(h_fake)
             g_loss = -torch.mean(torch.log(torch.sigmoid(d_fake) + 1e-8))
             
-            total_loss = recon_loss + vq_loss + lambda_adv * g_loss
+            total_loss = recon_loss + vq_loss + args.lambda_adv * g_loss
             
             total_loss.backward()
             optimizer.step()
