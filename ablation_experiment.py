@@ -502,7 +502,7 @@ def main():
     parser.add_argument("--temperature", type=float, default=1.0)
     
     # DoraVQ specific parameters
-    parser.add_argument("--lambda_adv", type=float, default=0.1, help="Adversarial loss weight for DoraVQ")
+    parser.add_argument("--lambda_adv", type=float, default=1e-4, help="Adversarial loss weight for DoraVQ")
     parser.add_argument("--dirichlet_alpha", type=float, default=0.1, help="Dirichlet alpha parameter for DoraVQ")
     
     # Model selection parameters
