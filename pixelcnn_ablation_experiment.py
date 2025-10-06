@@ -41,7 +41,7 @@ def extract_latent_codes(model, data_loader, device):
             else:
                 # For DoraVQ
                 # 1. 正常获取你的注意力权重
-                z_q, loss, perplexity, encoding_indices, distances, h = model.vq(z)
+                z_q, loss, perplexity, encoding_indices, distances = model.vq(z)
 
                 # 2. 使用编码索引
                 indices = encoding_indices.squeeze(1)
