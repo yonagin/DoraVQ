@@ -14,9 +14,9 @@ import matplotlib.pyplot as plt
 from torchvision.utils import save_image
 
 
-def extract_latent_codes(model, data_loader, device):
+def extract_latent_codes(model, data_loader, device, max_batches=None):
     """
-    Extract latent codes from VQVAE model
+    Extract latent codes from VQVAE model with memory optimization
     """
     model.eval()
     all_codes = []
@@ -24,6 +24,9 @@ def extract_latent_codes(model, data_loader, device):
     
     with torch.no_grad():
         for batch_idx, (x, labels) in enumerate(data_loader):
+            if max_batches is not None and batch_idx >= max_batches:
+                break
+                
             x = x.to(device)
             
             # Get latent codes from VQVAE - both models use encoder attribute
@@ -40,15 +43,12 @@ def extract_latent_codes(model, data_loader, device):
                 
             else:
                 # For DoraVQ
-                # 1. 正常获取你的注意力权重
                 z_q, loss, perplexity, encoding_indices, distances = model.vq(z)
 
-                # 2. 使用编码索引 - 注意：encoding_indices的形状是(B*H*W,)，需要reshape
-                # 首先获取batch size和空间维度
+                # 使用编码索引 - 注意：encoding_indices的形状是(B*H*W,)，需要reshape
                 batch_size = x.shape[0]
                 
                 # 计算实际的潜在空间维度
-                # encoding_indices的总元素数是B*H*W，所以H*W = total_elements / batch_size
                 total_elements = encoding_indices.numel()
                 hw_size = total_elements // batch_size
                 
@@ -63,7 +63,6 @@ def extract_latent_codes(model, data_loader, device):
             # Reshape indices to match latent spatial dimensions (对于VQVAE需要这个操作)
             if hasattr(model, 'vector_quantization'):
                 # For VQVAE: indices已经通过squeeze(1)处理过，需要reshape
-                # 同样需要计算正确的潜在空间维度
                 batch_size = x.shape[0]
                 total_elements = indices.numel()
                 hw_size = total_elements // batch_size
@@ -74,11 +73,27 @@ def extract_latent_codes(model, data_loader, device):
             
             # 确保indices是整数类型（LongTensor），因为它们是索引
             indices = indices.long()
+            
+            # 立即将数据移到CPU并释放GPU内存
             all_codes.append(indices.cpu())
             all_labels.append(labels)
+            
+            # 手动清理GPU内存
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            
+            # 定期清理列表以避免内存过度增长
+            if len(all_codes) > 10:  # 每10个batch清理一次
+                all_codes = [torch.cat(all_codes, dim=0)]
+                all_labels = [torch.cat(all_labels, dim=0)]
     
-    all_codes = torch.cat(all_codes, dim=0)
-    all_labels = torch.cat(all_labels, dim=0)
+    # 最终合并所有数据
+    if len(all_codes) > 1:
+        all_codes = torch.cat(all_codes, dim=0)
+        all_labels = torch.cat(all_labels, dim=0)
+    else:
+        all_codes = all_codes[0] if all_codes else torch.tensor([])
+        all_labels = all_labels[0] if all_labels else torch.tensor([])
     
     return all_codes, all_labels
 
@@ -334,6 +349,7 @@ def main():
     parser.add_argument("--img_dim", type=int, default=8)
     parser.add_argument("--n_layers", type=int, default=15)
     parser.add_argument("--temperature", type=float, default=1.0, help="Temperature parameter for DoraVQ")
+    parser.add_argument("--max_batches", type=int, default=None, help="Maximum number of batches to process (for memory optimization)")
     
     # VQVAE model paths
     parser.add_argument("--vqvae_model_path", type=str, default=None)
@@ -395,7 +411,7 @@ def main():
     latent_datasets = {}
     
     for model_name, model in vqvae_models.items():
-        codes, labels = extract_latent_codes(model, training_loader, device)
+        codes, labels = extract_latent_codes(model, training_loader, device, args.max_batches)
         latent_datasets[model_name] = (codes, labels)
         print(f"{model_name}: Extracted {len(codes)} latent codes with shape {codes.shape}")
     
